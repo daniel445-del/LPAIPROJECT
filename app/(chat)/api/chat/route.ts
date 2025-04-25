@@ -70,6 +70,12 @@ export async function POST(request: Request) {
 
     return createDataStreamResponse({
       execute: async (dataStream) => {
+        const textPart =
+          userMessage.parts.find(
+            (part): part is { text: string } =>
+              typeof (part as any).text === 'string'
+          )?.text ?? '[mensagem inválida]';
+
         const response = await fetch('https://api.dify.ai/v1/chat-messages', {
           method: 'POST',
           headers: {
@@ -78,7 +84,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             inputs: {},
-            query: userMessage.parts[0].text,
+            query: textPart,
             response_mode: 'streaming',
             user: session.user.id,
           }),
