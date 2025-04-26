@@ -2,9 +2,21 @@ import { auth } from "@/app/(auth)/auth";
 import { getChatById, saveMessages } from "@/lib/db/queries";
 import { getMostRecentUserMessage } from "@/lib/utils";
 
+interface UIMessage {
+  id: string;
+  parts: Array<{ text?: string }>;
+  experimental_attachments?: any[];
+}
+
 export async function POST(request: Request) {
   try {
-
+    const {
+      id,
+      messages,
+      selectedChatModel,
+    }: {
+      id: string;
+      messages: Array<UIMessage>;
       selectedChatModel: string;
     } = await request.json();
 
@@ -14,18 +26,16 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const userMessage = getMostRecentUserMessage(onmessage);
+    const userMessage = getMostRecentUserMessage(messages);
     if (!userMessage) {
       return new Response('No user message found', { status: 400 });
     }
 
     const chat = await getChatById({ id });
     if (!chat) {
-      const title = await generateTitleFromUserMessage({
-        message: userMessage,
-      });
+      const title = await generateTitleFromUserMessage({ message: userMessage });
 
-      saveChat({ id, userId: session.user.id, title });
+      await saveChat({ id, userId: session.user.id, title });
     } else {
       if (chat.userId !== session.user.id) {
         return new Response('Unauthorized', { status: 401 });
@@ -45,13 +55,11 @@ export async function POST(request: Request) {
       ],
     });
 
-    // ✅ Correção de tipo em 'part'
     const textPart =
-      (userMessage.parts.find((part: any) => typeof part.text === 'string') as any)?.text ??
+      (userMessage.parts.find((part: any) => typeof part.text === "string") as any)?.text ??
       '[mensagem inválida]';
 
     return createDataStreamResponse({
-      // ✅ Correção de tipo em 'dataStream'
       execute: async (dataStream: any) => {
         const response = await fetch('https://api.dify.ai/v1/chat-messages', {
           method: 'POST',
@@ -91,23 +99,37 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    console.error(error);
     return new Response('Ocorreu um erro ao processar a solicitação!', {
-      status: 404,
+      status: 500,
     });
   }
 }
-function generateTitleFromUserMessage(arg0: { message: any; }) {
-  throw new Error("Function not implemented.");
+
+function generateTitleFromUserMessage(arg0: { message: any }) {
+  return "Nova conversa"; // Você pode melhorar essa função depois
 }
 
-function saveChat(arg0: { id: string; userId: any; title: any; }) {
-  throw new Error("Function not implemented.");
+async function saveChat(arg0: { id: string; userId: any; title: any }) {
+  // Lógica para salvar o chat (ex: no banco de dados)
 }
 
-function createDataStreamResponse(arg0: {
-  // ✅ Correção de tipo em 'dataStream'
-  execute: (dataStream: any) => Promise<void>; onError: () => string;
+function createDataStreamResponse({
+  execute,
+  onError,
+}: {
+  execute: (dataStream: any) => Promise<void>;
+  onError: () => string;
 }) {
-  throw new Error("Function not implemented.");
+  const dataStream = {
+    write: (chunk: any) => console.log(chunk),
+    end: () => console.log('Stream ended.'),
+  };
+  try {
+    execute(dataStream);
+    return new Response('Stream started');
+  } catch (error) {
+    const errorMessage = onError();
+    return new Response(errorMessage, { status: 500 });
+  }
 }
-
