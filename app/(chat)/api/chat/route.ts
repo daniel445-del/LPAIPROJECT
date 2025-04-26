@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const userMessage = getMostRecentUserMessage(messages);
+    const userMessage = getMostRecentUserMessage(onmessage);
     if (!userMessage) {
       return new Response('No user message found', { status: 400 });
     }
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         message: userMessage,
       });
 
-      await saveChat({ id, userId: session.user.id, title });
+      saveChat({ id, userId: session.user.id, title });
     } else {
       if (chat.userId !== session.user.id) {
         return new Response('Unauthorized', { status: 401 });
