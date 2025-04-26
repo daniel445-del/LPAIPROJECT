@@ -1,24 +1,3 @@
-import {
-  UIMessage,
-  appendResponseMessages,
-  createDataStreamResponse,
-} from 'ai';
-import { auth } from '@/app/(auth)/auth';
-import {
-  deleteChatById,
-  getChatById,
-  saveChat,
-  saveMessages,
-} from '@/lib/db/queries';
-import {
-  generateUUID,
-  getMostRecentUserMessage,
-  getTrailingMessageId,
-} from '@/lib/utils';
-import { generateTitleFromUserMessage } from '../../actions';
-
-export const maxDuration = 60;
-
 export async function POST(request: Request) {
   try {
     const {
@@ -68,14 +47,13 @@ export async function POST(request: Request) {
       ],
     });
 
+    // ✅ Aqui está o trecho corrigido
+    const textPart =
+      (userMessage.parts.find((part) => typeof (part as any).text === 'string') as any)?.text ??
+      '[mensagem inválida]';
+
     return createDataStreamResponse({
       execute: async (dataStream) => {
-        const textPart =
-          userMessage.parts.find(
-            (part): part is { text: string } =>
-              typeof (part as any).text === 'string'
-          )?.text ?? '[mensagem inválida]';
-
         const response = await fetch('https://api.dify.ai/v1/chat-messages', {
           method: 'POST',
           headers: {
@@ -116,35 +94,6 @@ export async function POST(request: Request) {
   } catch (error) {
     return new Response('Ocorreu um erro ao processar a solicitação!', {
       status: 404,
-    });
-  }
-}
-
-export async function DELETE(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-
-  if (!id) {
-    return new Response('Not Found', { status: 404 });
-  }
-
-  const session = await auth();
-  if (!session || !session.user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  try {
-    const chat = await getChatById({ id });
-
-    if (chat.userId !== session.user.id) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    await deleteChatById({ id });
-    return new Response('Chat deleted', { status: 200 });
-  } catch (error) {
-    return new Response('Erro ao deletar o chat', {
-      status: 500,
     });
   }
 }
