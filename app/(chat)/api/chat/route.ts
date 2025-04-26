@@ -1,12 +1,10 @@
+import { auth } from "@/app/(auth)/auth";
+import { getChatById, saveMessages } from "@/lib/db/queries";
+import { getMostRecentUserMessage } from "@/lib/utils";
+
 export async function POST(request: Request) {
   try {
-    const {
-      id,
-      messages,
-      selectedChatModel,
-    }: {
-      id: string;
-      messages: Array<UIMessage>;
+
       selectedChatModel: string;
     } = await request.json();
 
@@ -47,13 +45,14 @@ export async function POST(request: Request) {
       ],
     });
 
-    // ✅ Aqui está o trecho corrigido
+    // ✅ Correção de tipo em 'part'
     const textPart =
-      (userMessage.parts.find((part) => typeof (part as any).text === 'string') as any)?.text ??
+      (userMessage.parts.find((part: any) => typeof part.text === 'string') as any)?.text ??
       '[mensagem inválida]';
 
     return createDataStreamResponse({
-      execute: async (dataStream) => {
+      // ✅ Correção de tipo em 'dataStream'
+      execute: async (dataStream: any) => {
         const response = await fetch('https://api.dify.ai/v1/chat-messages', {
           method: 'POST',
           headers: {
@@ -97,3 +96,18 @@ export async function POST(request: Request) {
     });
   }
 }
+function generateTitleFromUserMessage(arg0: { message: any; }) {
+  throw new Error("Function not implemented.");
+}
+
+function saveChat(arg0: { id: string; userId: any; title: any; }) {
+  throw new Error("Function not implemented.");
+}
+
+function createDataStreamResponse(arg0: {
+  // ✅ Correção de tipo em 'dataStream'
+  execute: (dataStream: any) => Promise<void>; onError: () => string;
+}) {
+  throw new Error("Function not implemented.");
+}
+
