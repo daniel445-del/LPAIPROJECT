@@ -1,24 +1,11 @@
 import { auth } from "@/app/(auth)/auth";
 import { getChatById, saveMessages } from "@/lib/db/queries";
 import { getMostRecentUserMessage } from "@/lib/utils";
-
-interface UIMessage {
-  id: string;
-  parts: Array<{ text?: string }>;
-  experimental_attachments?: any[];
-}
+import { UIMessage } from "@/types/ui-message"; // ✅ novo import
 
 export async function POST(request: Request) {
   try {
-    const {
-      id,
-      messages,
-      selectedChatModel,
-    }: {
-      id: string;
-      messages: Array<UIMessage>;
-      selectedChatModel: string;
-    } = await request.json();
+    const { id, messages, selectedChatModel }: { id: string; messages: UIMessage[]; selectedChatModel: string } = await request.json();
 
     const session = await auth();
 
@@ -34,7 +21,6 @@ export async function POST(request: Request) {
     const chat = await getChatById({ id });
     if (!chat) {
       const title = await generateTitleFromUserMessage({ message: userMessage });
-
       await saveChat({ id, userId: session.user.id, title });
     } else {
       if (chat.userId !== session.user.id) {
@@ -55,9 +41,7 @@ export async function POST(request: Request) {
       ],
     });
 
-    const textPart =
-      (userMessage.parts.find((part: any) => typeof part.text === "string") as any)?.text ??
-      '[mensagem inválida]';
+    const textPart = (userMessage.parts.find((part: any) => typeof part.text === 'string') as any)?.text ?? '[mensagem inválida]';
 
     return createDataStreamResponse({
       execute: async (dataStream: any) => {
@@ -99,37 +83,21 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error(error);
     return new Response('Ocorreu um erro ao processar a solicitação!', {
-      status: 500,
+      status: 404,
     });
   }
 }
 
+// Funções mockadas, ajuste conforme seu projeto
 function generateTitleFromUserMessage(arg0: { message: any }) {
-  return "Nova conversa"; // Você pode melhorar essa função depois
+  throw new Error("Function not implemented.");
 }
 
-async function saveChat(arg0: { id: string; userId: any; title: any }) {
-  // Lógica para salvar o chat (ex: no banco de dados)
+function saveChat(arg0: { id: string; userId: any; title: any }) {
+  throw new Error("Function not implemented.");
 }
 
-function createDataStreamResponse({
-  execute,
-  onError,
-}: {
-  execute: (dataStream: any) => Promise<void>;
-  onError: () => string;
-}) {
-  const dataStream = {
-    write: (chunk: any) => console.log(chunk),
-    end: () => console.log('Stream ended.'),
-  };
-  try {
-    execute(dataStream);
-    return new Response('Stream started');
-  } catch (error) {
-    const errorMessage = onError();
-    return new Response(errorMessage, { status: 500 });
-  }
+function createDataStreamResponse(arg0: { execute: (dataStream: any) => Promise<void>; onError: () => string }) {
+  throw new Error("Function not implemented.");
 }
