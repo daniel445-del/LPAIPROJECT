@@ -1,103 +1,61 @@
 import { auth } from "@/app/(auth)/auth";
-import { getChatById, saveMessages } from "@/lib/db/queries";
-import { getMostRecentUserMessage } from "@/lib/utils";
-import { UIMessage } from "@/types/ui-message"; // ✅ novo import
+import { saveMessages } from "@/lib/db/queries";
+
+const questions = [
+  { question: "Qual é a capital da França?", answer: "Paris" },
+  { question: "Quanto é 5 + 7?", answer: "12" },
+  { question: "Qual é o maior oceano do mundo?", answer: "Oceano Pacífico" },
+  { question: "Quem pintou a Mona Lisa?", answer: "Leonardo da Vinci" },
+];
+
+let currentQuestionIndex = 0;
 
 export async function POST(request: Request) {
   try {
-    const { id, messages, selectedChatModel }: { id: string; messages: UIMessage[]; selectedChatModel: string } = await request.json();
-
+    const { userAnswer } = await request.json();
     const session = await auth();
 
     if (!session || !session.user || !session.user.id) {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    const userMessage = getMostRecentUserMessage(messages);
-    if (!userMessage) {
-      return new Response('No user message found', { status: 400 });
+    const currentQuestion = questions[currentQuestionIndex];
+
+    let feedback = "";
+    if (!userAnswer) {
+      feedback = `Pergunta: ${currentQuestion.question}`;
+    } else if (userAnswer.trim().toLowerCase() === currentQuestion.answer.trim().toLowerCase()) {
+      feedback = "✅ Resposta correta!";
+      currentQuestionIndex++;
+    } else {
+      feedback = `❌ Resposta errada! Tente novamente: ${currentQuestion.question}`;
     }
 
-    const chat = await getChatById({ id });
-    if (!chat) {
-      const title = await generateTitleFromUserMessage({ message: userMessage });
-      await saveChat({ id, userId: session.user.id, title });
-    } else {
-      if (chat.userId !== session.user.id) {
-        return new Response('Unauthorized', { status: 401 });
-      }
+    if (currentQuestionIndex >= questions.length) {
+      feedback = "🎉 Quiz finalizado! Parabéns!";
+      currentQuestionIndex = 0; // Reinicia o quiz
     }
 
     await saveMessages({
       messages: [
         {
-          chatId: id,
-          id: userMessage.id,
-          role: 'user',
-          parts: userMessage.parts,
-          attachments: userMessage.experimental_attachments ?? [],
+          chatId: session.user.id,
+          id: crypto.randomUUID(),
+          role: 'system',
+          parts: [{ text: feedback }],
+          attachments: [],
           createdAt: new Date(),
         },
       ],
     });
 
-    const textPart = (userMessage.parts.find((part: any) => typeof part.text === 'string') as any)?.text ?? '[mensagem inválida]';
-
-    return createDataStreamResponse({
-      execute: async (dataStream: any) => {
-        const response = await fetch('https://api.dify.ai/v1/chat-messages', {
-          method: 'POST',
-          headers: {
-            Authorization: 'Bearer app-XYdKiP9cJTP1KkIja2bAjwMg',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            inputs: {},
-            query: textPart,
-            response_mode: 'streaming',
-            user: session.user.id,
-          }),
-        });
-
-        if (!response.ok || !response.body) {
-          dataStream.write(`Erro ao conectar com o agente da Dify.`);
-          dataStream.end();
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          dataStream.write(chunk);
-        }
-
-        dataStream.end();
-      },
-
-      onError: () => {
-        return 'Oops, ocorreu um erro com o agente Dify!';
-      },
+    return new Response(JSON.stringify({ feedback }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
-    return new Response('Ocorreu um erro ao processar a solicitação!', {
-      status: 404,
-    });
+    console.error(error);
+    return new Response('Erro no servidor!', { status: 500 });
   }
-}
-
-// Funções mockadas, ajuste conforme seu projeto
-function generateTitleFromUserMessage(arg0: { message: any }) {
-  throw new Error("Function not implemented.");
-}
-
-function saveChat(arg0: { id: string; userId: any; title: any }) {
-  throw new Error("Function not implemented.");
-}
-
-function createDataStreamResponse(arg0: { execute: (dataStream: any) => Promise<void>; onError: () => string }) {
-  throw new Error("Function not implemented.");
 }
