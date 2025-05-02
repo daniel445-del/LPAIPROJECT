@@ -6,31 +6,29 @@ export const authConfig = {
     newUser: '/',
   },
   providers: [
-    // added later in auth.ts since it requires bcrypt which is only compatible with Node.js
-    // while this file is also used in non-Node.js environments
+    // Adicione aqui os provedores no arquivo auth.ts
   ],
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isOnChat = nextUrl.pathname.startsWith('/');
-      const isOnRegister = nextUrl.pathname.startsWith('/register');
-      const isOnLogin = nextUrl.pathname.startsWith('/login');
+      const path = nextUrl.pathname;
 
-      if (isLoggedIn && (isOnLogin || isOnRegister)) {
-        return Response.redirect(new URL('/', nextUrl as unknown as URL));
+      const isAuthPage = path === '/login' || path === '/register';
+      const isProtectedPath = path.startsWith('/admin') || path.startsWith('/dashboard');
+
+      // Permitir sempre acesso às páginas públicas
+      if (!isProtectedPath) {
+        return true;
       }
 
-      if (isOnRegister || isOnLogin) {
-        return true; // Always allow access to register and login pages
+      // Se for uma rota protegida, exige login
+      if (isProtectedPath) {
+        return isLoggedIn;
       }
 
-      if (isOnChat) {
-        if (isLoggedIn) return true;
-        return false; // Redirect unauthenticated users to login page
-      }
-
-      if (isLoggedIn) {
-        return Response.redirect(new URL('/', nextUrl as unknown as URL));
+      // Redirecionar usuários já logados que tentam acessar login/register
+      if (isLoggedIn && isAuthPage) {
+        return Response.redirect(new URL('/', nextUrl));
       }
 
       return true;
