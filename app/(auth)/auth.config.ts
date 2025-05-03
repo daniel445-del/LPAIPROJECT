@@ -1,14 +1,5 @@
-import type { NextAuthConfig } from 'next-auth';
-
-export const authConfig = {
-  pages: {
-    signIn: '/login',
-    newUser: '/',
+callbacks: {
+  authorized() {
+    return true;
   },
-  providers: [],
-  callbacks: {
-    authorized() {
-      return true; // permite acesso a tudo
-    },
-  },
-} satisfies NextAuthConfig;
+},
