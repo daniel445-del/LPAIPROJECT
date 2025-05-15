@@ -1,5 +1,0 @@
-callbacks: {
-  authorized() {
-    return true;
-  },
-},
